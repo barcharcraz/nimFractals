@@ -2,8 +2,8 @@ import opengl
 import glfw
 import math
 import vecmath
-const width = 640
-const height = 480
+const width = 1920
+const height = 1080
 const fov = PI/4
 const focal = 1.0
 
@@ -78,14 +78,22 @@ proc setUniforms(program: GLuint) =
   glUniform2i(resolutionLoc, width, height)
   glUniform1f(fovLoc, fov)
   glUniform1f(focalLoc, focal)
-  var viewMtx = CreateViewMatrix(vec3f(0, 2, 0), vec3f(0,0,-1))
+  var viewMtx = CreateViewMatrix(vec3f(0, -10, -10), vec3f(0,0,20))
   echo vecmath.`$`(viewMtx)
   #var viewMtx = toTranslationMatrix(vec3f(0, -0.2, 0))
   glUniformMatrix4fv(viewMatrixLoc, 1, false, addr viewMtx.data[0])
 
+
+proc onKeyPress(o: Win, key: Key, scanCode: int, action: KeyAction, modKeys: ModifierKeySet) =
+  if action != kaDown: return
+  if key == keyA:
+    if glIsEnabled(GL_MULTISAMPLE):
+      glDisable(GL_MULTISAMPLE)
+    else:
+      glEnable(GL_MULTISAMPLE)
+
 var vertices = [vec3f(-1, -1, 0), vec3f(1, -1, 0), vec3f(1,1,0), vec3f(-1, 1, 0)]
 var indices = [0'u32, 1, 2, 0, 2, 3]
-
 
 proc main() =
   glfw.init()
@@ -94,7 +102,9 @@ proc main() =
     dim = (w: width, h: height),
     version = glv44,
     profile = glpCore,
+    nMultiSamples = 4
   )
+  win.keyCb = onKeyPress
   makeContextCurrent(win)
   loadExtensions()
   glEnable(GL_DEPTH_TEST)
@@ -103,6 +113,7 @@ proc main() =
   glDepthRange(0.0'f32, 1.0'f32)
   glEnable(GL_CULL_FACE)
   glFrontFace(GL_CCW)
+  glEnable(GL_MULTISAMPLE)
   var prog = loadProgram("raymarch.vs", "raymarch.fs")
   setUniforms(prog)
 
