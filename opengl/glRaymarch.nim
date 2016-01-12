@@ -2,12 +2,13 @@ import opengl
 import glfw
 import math
 import vecmath
-const width = 1920
-const height = 1080
+import times
+const width = 640
+const height = 480
 const fov = PI/4
 const focal = 1.0
-
-
+var totalPlaybackTime: float = 0.0;
+var deltaTime: float = 0.0;
 proc checkProgramErrors(program: GLuint): (bool, string) =
   var status: GLint
   var infoLogLen: GLint
@@ -69,6 +70,10 @@ proc setUniforms(program: GLuint) =
   glUseProgram(program)
   var resolutionLoc = glGetUniformLocation(program, "resolution")
   if resolutionLoc == -1: quit("resolution uniform not active")
+  var globalTimeLoc = glGetUniformLocation(program, "globalTime")
+  if globalTimeLoc == -1: echo("Warning: global time not used")
+  var globalDeltaLoc = glGetUniformLocation(program, "globalDelta");
+  if globalDeltaLoc == -1: echo("Warning: global time delta not used")
   var fovLoc = glGetUniformLocation(program, "fov");
   if fovLoc == -1: quit("fov uniform not active")
   var focalLoc = glGetUniformLocation(program, "focal")
@@ -76,9 +81,11 @@ proc setUniforms(program: GLuint) =
   var viewMatrixLoc = glGetUniformLocation(program, "viewMatrix")
   #if viewMatrixLoc == -1: quit("view matrix uniform not active")
   glUniform2i(resolutionLoc, width, height)
+  glUniform1f(globalTimeLoc, totalPlaybackTime)
+  glUniform1f(globalDeltaLoc, deltaTime);
   glUniform1f(fovLoc, fov)
   glUniform1f(focalLoc, focal)
-  var viewMtx = CreateViewMatrix(vec3f(0, -10, -10), vec3f(0,0,20))
+  var viewMtx = CreateViewMatrix(vec3f(0, 0, 0), vec3f(0,0,-20))
   echo vecmath.`$`(viewMtx)
   #var viewMtx = toTranslationMatrix(vec3f(0, -0.2, 0))
   glUniformMatrix4fv(viewMatrixLoc, 1, false, addr viewMtx.data[0])
@@ -100,10 +107,10 @@ proc main() =
   var done = false
   var win = newGlWin(
     dim = (w: width, h: height),
-    version = glv44,
-    profile = glpCore,
-    nMultiSamples = 4
+    version = glv31,
+    profile = glpAny
   )
+  var startTime: float = 0.0
   win.keyCb = onKeyPress
   makeContextCurrent(win)
   loadExtensions()
@@ -114,9 +121,10 @@ proc main() =
   glEnable(GL_CULL_FACE)
   glFrontFace(GL_CCW)
   glEnable(GL_MULTISAMPLE)
+  glClearColor(0,0,0,1)
   var prog = loadProgram("raymarch.vs", "raymarch.fs")
   setUniforms(prog)
-
+  var positionLoc = glGetAttribLocation(prog, "position")
   var vao: GLuint
   var vbo: GLuint
   var indexArray: GLuint
@@ -129,14 +137,17 @@ proc main() =
   glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(len(vertices) * sizeof(Vec3f)), addr vertices[0], GL_STATIC_DRAW)
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexArray)
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(indices) * sizeof(uint32), addr indices[0], GL_STATIC_DRAW)
-  glVertexAttribPointer(0, 3, cGL_FLOAT, false, 0.GLsizei, cast[pointer](0))
+  glVertexAttribPointer(positionLoc.GLuint, 3, cGL_FLOAT, false, 0.GLsizei, cast[pointer](0))
 
+  startTime = cpuTime()
 
   while not done and not win.shouldClose:
     glDrawElements(GL_TRIANGLES, len(indices).GLsizei, GL_UNSIGNED_INT, cast[pointer](0))
     win.update()
     glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT or GL_STENCIL_BUFFER_BIT)
-
+    deltaTime = cpuTime() - totalPlaybackTime
+    totalPlaybackTime = cpuTime() - startTime
+    setUniforms(prog)
   win.destroy()
   glfw.terminate()
 
