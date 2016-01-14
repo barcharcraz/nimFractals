@@ -132,7 +132,7 @@ vec3 lightPoint(in vec3 p) {
   n = -1 * n;
 
   //TODO: make ambiant uniform
-  color += vec3(0.3, 0.3, 0.5);
+  color += vec3(0.3, 0.3, 0.3);
 
   float lambert = dot(n,l);
   if(lambert > 0) {
@@ -183,11 +183,11 @@ void main() {
   gl_FragDepth = 1.0 - lum;
   //trace(vec3(0,0,0), d.xyz, t, lum);
   if(lum > 0) {
-    fragColor = vec3(lum,lum,lum);
-    //fragColor = vec3(lightPoint(o.xyz + t*d.xyz));
+    //fragColor = vec3(lum,lum,lum);
+    fragColor = vec3(lightPoint(o.xyz + t*d.xyz));
   } else {
-    fragColor = vec3(globalDelta);
-    //fragColor = vec3(0,0,0);
+    //fragColor = vec3(globalDelta);
+    fragColor = vec3(0,0,0);
     //fragColor = d;
   }
 }
